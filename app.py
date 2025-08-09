@@ -1,4 +1,5 @@
 import os
+import json
 import requests
 import random
 import string
@@ -21,12 +22,12 @@ def generate_random_string(length=8):
 taskID = generate_random_string(8) 
 
 
-outPutInfo('查看详细报告访问: https://demos.run/check/index.html?id=' + taskID)
+outPutInfo('查看详细报告访问: https://code.lamp.run/?id=' + taskID)
 
 def find_php_files(directory):
     """查找目录下所有PHP文件"""
     php_files = []
-    ignored_dirs = {'vendor', 'node_modules', 'cache'}
+    ignored_dirs = {'vendor', 'node_modules', 'cache', 'temp'}
     for root, dirs, files in os.walk(directory):
         [dirs.remove(d) for d in list(dirs) if d in ignored_dirs]
         for file in files:
@@ -43,11 +44,14 @@ def post_file_content(url, file_path):
         with open(file_path, 'r', encoding='utf-8') as f:
             content = f.read()
         if len(content) > 60000:  # 判断字符数
-            return {"content": "跳过 {file_path} (文件大小超过限制)"}
-        response = requests.post(url, data={'file_content': content})
+            return {"content": "跳过 " + file_path + " (文件大小超过限制)"}
+        headers = {
+            'Content-Type': 'application/json'
+        }
+        response = requests.post(url, data=json.dumps({'file_content': content, "file_name": file_path}), headers=headers)
         return response.json()
     except Exception as e:
-        return f"Error: {str(e)}"
+        return {"content": str(e)}
 
 def main():
     parser = argparse.ArgumentParser(description='PHP文件扫描工具')
@@ -57,7 +61,7 @@ def main():
                       help='输出日志文件名')
     args = parser.parse_args()
 
-    target_url = 'https://ai.lamp.run/checkPHP/' + taskID
+    
     current_dir = os.getcwd()
     outPutInfo("正在搜索PHP文件...")
     php_files = find_php_files(current_dir)
@@ -67,15 +71,16 @@ def main():
     if total_files == 0:
         return
     
+    target_url = 'https://code.lamp.run/checkPHP/' + taskID + '/' + str(total_files)
     # 使用tqdm创建进度条
     for i, file_path in enumerate(tqdm(php_files[args.start_from:], 
                                      desc="处理文件中",
                                      initial=args.start_from,
                                      total=len(php_files))):
-        result = post_file_content(target_url, file_path)['content']
-        outPutInfo(f"\n文件: {file_path}")
-        outPutInfo(f"检查结果: {result}")
-        outPutInfo("-" * 50)
+        result = post_file_content(target_url, file_path)
+        # outPutInfo(f"\n文件: {file_path}")
+        # outPutInfo(f"检查结果: {result}")
+        # outPutInfo("-" * 50)
 
     with open("./" + args.output, 'a', encoding='utf-8') as f:
         f.write(infoTemp)
