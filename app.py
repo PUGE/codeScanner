@@ -139,7 +139,6 @@ def main():
                                      desc="处理文件中",
                                      initial=args.start_from,
                                      total=len(filesList))):
-        print(fileInfo)
         file_path = fileInfo[0]
         codeType = fileInfo[1]
         target_url = 'https://code.lamp.run/check' + codeType + '/' + taskID + '/' + str(total_files)
