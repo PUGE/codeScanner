@@ -117,6 +117,7 @@ def post_file_content(url, file_path):
         return {"content": str(e)}
 
 def main():
+    
     outPutInfo('查看代码检查报告访问: https://code.lamp.run/?id=' + taskID)
     parser = argparse.ArgumentParser(description='PHP文件扫描工具')
     parser.add_argument('--start-from', type=int, default=0,
@@ -133,19 +134,27 @@ def main():
     if total_files == 0:
         return
     
-    
-    # 使用tqdm创建进度条
-    for i, fileInfo in enumerate(tqdm(filesList[args.start_from:], 
-                                     desc="处理文件中",
-                                     initial=args.start_from,
-                                     total=len(filesList))):
-        file_path = fileInfo[0]
-        codeType = fileInfo[1]
-        target_url = 'https://code.lamp.run/check' + codeType + '/' + taskID + '/' + str(total_files)
-        post_file_content(target_url, file_path)
+    auth_code = input("请输入授权码: ").strip()
+    url = "https://cdk.lamp.run/useCdkNum/" + auth_code + "/" + str(total_files)
 
-    BrowserOpener.open('https://code.lamp.run/?id=' + taskID, browser='chrome')
+    response = requests.request("GET", url, headers={}, data={})
+    authData = json.loads(response.text)
+    print(authData["msg"])
+    if (authData["err"] == 0):
+        # 使用tqdm创建进度条
+        for i, fileInfo in enumerate(tqdm(filesList[args.start_from:], 
+                                        desc="处理文件中",
+                                        initial=args.start_from,
+                                        total=len(filesList))):
+            file_path = fileInfo[0]
+            codeType = fileInfo[1]
+            target_url = 'https://code.lamp.run/check' + codeType + '/' + taskID + '/' + str(total_files)
+            post_file_content(target_url, file_path)
 
+        BrowserOpener.open('https://code.lamp.run/?id=' + taskID, browser='chrome')
+        input("扫描完成,按任意键结束!").strip()
+    else:
+        input("扫描完成,按任意键结束!").strip()
 
 if __name__ == '__main__':
     main()
