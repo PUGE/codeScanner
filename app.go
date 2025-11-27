@@ -102,6 +102,10 @@ func findFiles(directory string) [][2]string {
 				fileType = "Python"
 			case ".bat":
 				fileType = "Bat"
+			case ".java":
+				fileType = "JAVA"
+			case ".cs":
+				fileType = "CSharp"
 			default:
 				return nil
 			}
@@ -283,7 +287,7 @@ func main() {
 		return
 	}
 
-	outPutInfo("正在搜索PHP, Python, Bat代码文件...")
+	outPutInfo("正在搜索PHP, Python, Bat, JAVA, C#代码文件...")
 	filesList := findFiles(currentDir)
 	totalFiles := len(filesList)
 
@@ -341,7 +345,7 @@ func main() {
 			fileInfo := filesList[i]
 			filePath := fileInfo[0]
 			codeType := fileInfo[1]
-			targetURL := "https://code.lamp.run/check" + codeType + "/" + taskID + "/" + fmt.Sprintf("%d", totalFiles)
+			targetURL := "https://code.lamp.run/check/" + codeType + "/" + taskID + "/" + fmt.Sprintf("%d", totalFiles)
 			
 			postFileContent(targetURL, filePath)
 			bar.Add(1)
