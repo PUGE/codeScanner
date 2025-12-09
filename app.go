@@ -106,6 +106,8 @@ func findFiles(directory string) [][2]string {
 				fileType = "JAVA"
 			case ".cs":
 				fileType = "CSharp"
+			case ".js":
+				fileType = "NodeJS"
 			default:
 				return nil
 			}
@@ -287,7 +289,7 @@ func main() {
 		return
 	}
 
-	outPutInfo("正在搜索PHP, Python, Bat, JAVA, C#代码文件...")
+	outPutInfo("正在搜索PHP, Python, Bat, JAVA, C#, NodeJS代码文件...")
 	filesList := findFiles(currentDir)
 	totalFiles := len(filesList)
 
