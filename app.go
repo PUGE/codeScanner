@@ -11,16 +11,32 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
-	
+
 	"github.com/schollz/progressbar/v3"
 	"golang.org/x/text/encoding/simplifiedchinese"
 	"golang.org/x/text/transform"
 )
 
 var infoTemp string
+var selectedFileType string
+var fileTypeExtensions = map[string][]string{
+	"PHP":        {".php"},
+	"Python":     {".py"},
+	"Bat":        {".bat", ".cmd"},
+	"JAVA":       {".java"},
+	"CSharp":     {".cs"},
+	"NodeJS":     {".js"},
+	"JavaScript": {".js"},
+	"Vue":        {".vue"},
+	"Go":         {".go"},
+	"TypeScript": {".ts", ".tsx"},
+	"Shell":      {".sh", ".bash"},
+	"SQL":        {".sql"},
+}
 
 func outPutInfo(info string) {
 	fmt.Println(info)
@@ -40,7 +56,7 @@ type BrowserOpener struct{}
 
 func (b *BrowserOpener) Open(url string, browser string, newTab bool) bool {
 	var cmd *exec.Cmd
-	
+
 	switch runtime.GOOS {
 	case "windows":
 		if strings.ToLower(browser) == "edge" {
@@ -69,13 +85,100 @@ func (b *BrowserOpener) Open(url string, browser string, newTab bool) bool {
 	return true
 }
 
+func selectSingleFileType() string {
+	fmt.Println("===============================================================")
+	fmt.Println("                   请选择要扫描的文件类型")
+	fmt.Println("===============================================================")
+	fmt.Println("说明：请输入数字选择一种文件类型")
+	fmt.Println("===============================================================")
+
+	// 创建类型列表并排序
+	typeList := make([]string, 0, len(fileTypeExtensions))
+	for typeName := range fileTypeExtensions {
+		typeList = append(typeList, typeName)
+	}
+
+	// 按字母顺序排序
+	for i := 0; i < len(typeList)-1; i++ {
+		for j := i + 1; j < len(typeList); j++ {
+			if typeList[i] > typeList[j] {
+				typeList[i], typeList[j] = typeList[j], typeList[i]
+			}
+		}
+	}
+
+	scanner := bufio.NewScanner(os.Stdin)
+
+	for {
+		// 显示类型列表
+		fmt.Println("\n可选择的文件类型:")
+		fmt.Println("----------------------------------------")
+		for i, typeName := range typeList {
+			fmt.Printf("%2d. %s", i+1, typeName)
+			// 显示扩展名
+			if exts, ok := fileTypeExtensions[typeName]; ok && len(exts) > 0 {
+				fmt.Printf(" (%s)", strings.Join(exts, ", "))
+			}
+			fmt.Println()
+		}
+		fmt.Println(" 0. 退出程序")
+		fmt.Println("----------------------------------------")
+		fmt.Print("请输入要选择的编号: ")
+
+		scanner.Scan()
+		input := strings.TrimSpace(scanner.Text())
+
+		if input == "0" {
+			fmt.Println("程序已退出")
+			os.Exit(0)
+		}
+
+		num, err := strconv.Atoi(input)
+		if err != nil || num < 1 || num > len(typeList) {
+			fmt.Printf("无效的编号，请输入 1-%d 之间的数字\n", len(typeList))
+			continue
+		}
+
+		selectedType := typeList[num-1]
+		
+		// 确认选择
+		fmt.Printf("\n您选择了: %s\n", selectedType)
+		if exts, ok := fileTypeExtensions[selectedType]; ok && len(exts) > 0 {
+			fmt.Printf("将扫描扩展名为 %s 的文件\n", strings.Join(exts, ", "))
+		}
+		fmt.Print("确认选择？(y/n): ")
+		
+		scanner.Scan()
+		confirm := strings.TrimSpace(strings.ToLower(scanner.Text()))
+		if confirm == "y" || confirm == "yes" {
+			fmt.Println("===============================================================")
+			fmt.Printf("已选择: %s\n", selectedType)
+			fmt.Println("===============================================================")
+			return selectedType
+		}
+		
+		fmt.Println("重新选择...")
+	}
+}
+
 func findFiles(directory string) [][2]string {
 	var filesList [][2]string
+
 	ignoredDirs := map[string]bool{
 		"vendor":       true,
 		"node_modules": true,
 		"cache":        true,
-		"temp":         true,
+		"temp":        true,
+		".git":        true,
+		".svn":        true,
+		".idea":       true,
+		".vscode":     true,
+		"__pycache__": true,
+		"target":      true,
+		"build":       true,
+		"dist":        true,
+		"bin":         true,
+		"obj":         true,
 	}
 
 	err := filepath.Walk(directory, func(path string, info os.FileInfo, err error) error {
@@ -91,28 +194,21 @@ func findFiles(directory string) [][2]string {
 		}
 
 		// 检查文件大小 (1MB = 1024*1024 bytes)
-		if info.Size() <= 1024*1024 {
-			ext := strings.ToLower(filepath.Ext(path))
-			var fileType string
-			
-			switch ext {
-			case ".php":
-				fileType = "PHP"
-			case ".py":
-				fileType = "Python"
-			case ".bat":
-				fileType = "Bat"
-			case ".java":
-				fileType = "JAVA"
-			case ".cs":
-				fileType = "CSharp"
-			case ".js":
-				fileType = "NodeJS"
-			default:
-				return nil
+		if info.Size() > 1024*1024 {
+			return nil
+		}
+
+		// 获取文件扩展名
+		ext := strings.ToLower(filepath.Ext(path))
+		
+		// 检查扩展名是否匹配选中的文件类型
+		if exts, ok := fileTypeExtensions[selectedFileType]; ok {
+			for _, allowedExt := range exts {
+				if ext == allowedExt {
+					filesList = append(filesList, [2]string{path, selectedFileType})
+					break
+				}
 			}
-			
-			filesList = append(filesList, [2]string{path, fileType})
 		}
 
 		return nil
@@ -170,7 +266,7 @@ func readFileWithEncoding(filePath, encoding string, maxChars int) (string, erro
 	defer file.Close()
 
 	var reader io.Reader = file
-	
+
 	// 处理中文编码
 	if encoding == "gbk" || encoding == "gb18030" {
 		reader = transform.NewReader(reader, simplifiedchinese.GBK.NewDecoder())
@@ -183,7 +279,7 @@ func readFileWithEncoding(filePath, encoding string, maxChars int) (string, erro
 	}
 
 	content := string(contentBytes)
-	
+
 	// 检查字符数
 	if utf8.RuneCountInString(content) > maxChars {
 		// 截断内容
@@ -209,7 +305,7 @@ func readFileBinary(filePath string, maxChars int) (string, error) {
 	}
 
 	content := string(contentBytes)
-	
+
 	// 检查字符数并截断
 	if utf8.RuneCountInString(content) > maxChars {
 		runes := []rune(content)
@@ -263,13 +359,17 @@ func postFileContent(url, filePath string) map[string]interface{} {
 func main() {
 	rand.Seed(time.Now().UnixNano())
 	taskID := generateRandomString(8)
+	
 	fmt.Println("===============================================================")
 	fmt.Println("       将程序放入代码根目录运行以扫描所有代码文件")
-    fmt.Println("           联系客服咨询问题以及购买检查次数")
-    fmt.Println("  https://work.weixin.qq.com/kfid/kfc7a6930ede9575277")
-    fmt.Println("===============================================================")
-	outPutInfo("查看本次代码检查报告访问: https://code.lamp.run/?id=" + taskID)
+	fmt.Println("           联系客服咨询问题以及购买检查次数")
+	fmt.Println("  https://work.weixin.qq.com/kfid/kfc7a6930ede9575277")
 	fmt.Println("===============================================================")
+
+
+	// 先选择文件类型
+	selectedFileType = selectSingleFileType()
+
 	// 简单的命令行参数解析
 	startFrom := 0
 	args := os.Args[1:]
@@ -289,13 +389,21 @@ func main() {
 		return
 	}
 
-	outPutInfo("正在搜索PHP, Python, Bat, JAVA, C#, NodeJS代码文件...")
+	// 显示选择的文件类型
+	fmt.Printf("\n正在搜索 %s 代码文件...\n", selectedFileType)
+	if exts, ok := fileTypeExtensions[selectedFileType]; ok && len(exts) > 0 {
+		fmt.Printf("将扫描扩展名为: %s\n", strings.Join(exts, ", "))
+	}
+
 	filesList := findFiles(currentDir)
 	totalFiles := len(filesList)
 
 	outPutInfo(fmt.Sprintf("找到 %d 个符合条件的代码文件", totalFiles))
 
 	if totalFiles == 0 {
+		fmt.Println("没有找到符合条件的文件。")
+		fmt.Print("按任意键结束...")
+		bufio.NewScanner(os.Stdin).Scan()
 		return
 	}
 
@@ -308,7 +416,9 @@ func main() {
 		fmt.Println("授权码不能为空")
 		return
 	}
-
+	fmt.Println("===============================================================")
+	outPutInfo("查看本次代码检查报告访问: https://code.lamp.run/?id=" + taskID)
+	fmt.Println("===============================================================")
 	url := "https://cdk.lamp.run/useCdkNum/" + authCode + "/" + fmt.Sprintf("%d", totalFiles)
 
 	resp, err := http.Get(url)
@@ -343,15 +453,15 @@ func main() {
 			if i >= len(filesList) {
 				break
 			}
-			
+
 			fileInfo := filesList[i]
 			filePath := fileInfo[0]
 			codeType := fileInfo[1]
 			targetURL := "https://code.lamp.run/check/" + codeType + "/" + taskID + "/" + fmt.Sprintf("%d", totalFiles)
-			
+
 			postFileContent(targetURL, filePath)
 			bar.Add(1)
-			
+
 			// 添加小延迟避免请求过快
 			time.Sleep(100 * time.Millisecond)
 		}
