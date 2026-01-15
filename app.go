@@ -419,7 +419,7 @@ func main() {
 	fmt.Println("===============================================================")
 	outPutInfo("查看本次代码检查报告访问: https://code.lamp.run/?id=" + taskID)
 	fmt.Println("===============================================================")
-	url := "https://cdk.lamp.run/useCdkNum/" + authCode + "/" + fmt.Sprintf("%d", totalFiles)
+	url := "https://user.lamp.run/cdk/manager/useCdkNum/" + authCode + "/" + fmt.Sprintf("%d", totalFiles)
 
 	resp, err := http.Get(url)
 	if err != nil {
