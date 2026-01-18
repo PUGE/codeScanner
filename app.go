@@ -36,6 +36,7 @@ var fileTypeExtensions = map[string][]string{
 	"TypeScript": {".ts", ".tsx"},
 	"Shell":      {".sh", ".bash"},
 	"SQL":        {".sql"},
+	".NET":        {".asp", ".aspx"},
 }
 
 func outPutInfo(info string) {
