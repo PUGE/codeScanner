@@ -36,7 +36,7 @@ var fileTypeExtensions = map[string][]string{
 	"TypeScript": {".ts", ".tsx"},
 	"Shell":      {".sh", ".bash"},
 	"SQL":        {".sql"},
-	".NET":        {".asp", ".aspx"},
+	"ASP":        {".asp", ".aspx"},
 }
 
 func outPutInfo(info string) {
@@ -141,14 +141,14 @@ func selectSingleFileType() string {
 		}
 
 		selectedType := typeList[num-1]
-		
+
 		// 确认选择
 		fmt.Printf("\n您选择了: %s\n", selectedType)
 		if exts, ok := fileTypeExtensions[selectedType]; ok && len(exts) > 0 {
 			fmt.Printf("将扫描扩展名为 %s 的文件\n", strings.Join(exts, ", "))
 		}
 		fmt.Print("确认选择？(y/n): ")
-		
+
 		scanner.Scan()
 		confirm := strings.TrimSpace(strings.ToLower(scanner.Text()))
 		if confirm == "y" || confirm == "yes" {
@@ -157,7 +157,7 @@ func selectSingleFileType() string {
 			fmt.Println("===============================================================")
 			return selectedType
 		}
-		
+
 		fmt.Println("重新选择...")
 	}
 }
@@ -169,17 +169,17 @@ func findFiles(directory string) [][2]string {
 		"vendor":       true,
 		"node_modules": true,
 		"cache":        true,
-		"temp":        true,
-		".git":        true,
-		".svn":        true,
-		".idea":       true,
-		".vscode":     true,
-		"__pycache__": true,
-		"target":      true,
-		"build":       true,
-		"dist":        true,
-		"bin":         true,
-		"obj":         true,
+		"temp":         true,
+		".git":         true,
+		".svn":         true,
+		".idea":        true,
+		".vscode":      true,
+		"__pycache__":  true,
+		"target":       true,
+		"build":        true,
+		"dist":         true,
+		"bin":          true,
+		"obj":          true,
 	}
 
 	err := filepath.Walk(directory, func(path string, info os.FileInfo, err error) error {
@@ -201,7 +201,7 @@ func findFiles(directory string) [][2]string {
 
 		// 获取文件扩展名
 		ext := strings.ToLower(filepath.Ext(path))
-		
+
 		// 检查扩展名是否匹配选中的文件类型
 		if exts, ok := fileTypeExtensions[selectedFileType]; ok {
 			for _, allowedExt := range exts {
@@ -327,9 +327,10 @@ func postFileContent(url, filePath string) map[string]interface{} {
 	}
 
 	// 准备请求数据
+	dir, _ := os.Getwd()
 	data := map[string]interface{}{
 		"file_content": content,
-		"file_name":    filePath,
+		"file_name":    strings.Replace(filePath, dir, "", -1),
 	}
 
 	jsonData, err := json.Marshal(data)
@@ -360,13 +361,12 @@ func postFileContent(url, filePath string) map[string]interface{} {
 func main() {
 	rand.Seed(time.Now().UnixNano())
 	taskID := generateRandomString(8)
-	
+
 	fmt.Println("===============================================================")
 	fmt.Println("       将程序放入代码根目录运行以扫描所有代码文件")
 	fmt.Println("           联系客服咨询问题以及购买检查次数")
 	fmt.Println("  https://work.weixin.qq.com/kfid/kfc7a6930ede9575277")
 	fmt.Println("===============================================================")
-
 
 	// 先选择文件类型
 	selectedFileType = selectSingleFileType()
@@ -418,7 +418,7 @@ func main() {
 		return
 	}
 	fmt.Println("===============================================================")
-	outPutInfo("查看本次代码检查报告访问: https://code.lamp.run/?id=" + taskID)
+	outPutInfo("查看本次代码检查报告访问: https://code.port.run/?id=" + taskID)
 	fmt.Println("===============================================================")
 	url := "https://user.lamp.run/cdk/manager/useCdkNum/" + authCode + "/" + fmt.Sprintf("%d", totalFiles)
 
@@ -458,7 +458,7 @@ func main() {
 			fileInfo := filesList[i]
 			filePath := fileInfo[0]
 			codeType := fileInfo[1]
-			targetURL := "https://code.lamp.run/check/" + codeType + "/" + taskID + "/" + fmt.Sprintf("%d", totalFiles)
+			targetURL := "https://code.port.run/check/" + codeType + "/" + taskID + "/" + fmt.Sprintf("%d", totalFiles)
 
 			postFileContent(targetURL, filePath)
 			bar.Add(1)
@@ -469,10 +469,10 @@ func main() {
 
 		// 打开浏览器
 		browser := BrowserOpener{}
-		browser.Open("https://code.lamp.run/?id="+taskID, "chrome", true)
+		browser.Open("https://code.port.run/?id="+taskID, "chrome", true)
 
 		fmt.Print("扫描完成")
-		fmt.Println("如果没有有自动打开浏览器，请手动访问: https://code.lamp.run/?id=" + taskID)
+		fmt.Println("如果没有有自动打开浏览器，请手动访问: https://code.port.run/?id=" + taskID)
 		fmt.Print("按任意键结束")
 		scanner.Scan()
 	} else {
